@@ -1,0 +1,55 @@
+---
+  - name: "Container Creation"
+    hosts: all
+    become: true
+    tasks:
+
+      - name: "Install pip"
+        yum:
+          name: pip
+          state: present
+        register: pip
+
+      - name: "Depandancy Task Install dokcer-py"
+        pip:
+          name: docker-py
+          state: present
+
+      - name: "Install Docker"
+        when: pip.changed == true
+        shell: amazon-linux-extras install docker -y
+
+
+      - name: "Start docket"
+        when: pip.changed == true
+        service:
+          name: docker
+          state: restarted
+          enabled: true
+
+      - name: "pull Httpd image"
+        docker_image:
+          name: httpd
+          source: pull
+        register: image
+      - debug:
+          var: image
+
+      - name: "Download a website for container"
+        get_url:
+          url: https://www.tooplate.com/zip-templates/2121_wave_cafe.zip
+          dest: /root/
+
+      - name: "unzip the downloaded file"
+        unarchive:
+          src: /root/2121_wave_cafe.zip
+          dest: /root
+          remote_src: yes
+      - name: "Launch container using httpd image"
+        docker_container:
+          name: mysite
+          image: httpd:latest
+          state: started
+          ports: "80:80"
+          volumes:
+            - /root/2121_wave_cafe/:/usr/local/apache2/htdocs/
